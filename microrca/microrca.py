@@ -52,7 +52,7 @@ class Microrca:
         self.ad_threshold = ad_threshold
 
     # Run microrca
-    def run(self, faults_name, end_time):
+    def run(self, faults_name, end_time, results_csv=''):
         self.faults_name = faults_name
         self.end_time = end_time
         self.start_time = end_time - self.len_second
@@ -93,6 +93,16 @@ class Microrca:
             writer.writerow(anomalies)#.insert(0, 'anomalous services'))
             writer.writerow(anomaly_score)#.insert(0, 'anomaly score raw'))
             writer.writerow(anomaly_score_new)#.insert(0, 'anomaly score no db'))
+
+        labeled_score = [self.faults_name, *anomaly_score_new]
+        print(labeled_score)
+        if results_csv != '':
+            with open(results_csv, 'a') as f:
+                writer = csv.writer(f)
+                # writer.writerow(anomalies)#.insert(0, 'anomalous services'))
+                # writer.writerow(anomaly_score)#.insert(0, 'anomaly score raw'))
+                writer.writerow(labeled_score)#.insert(0, 'anomaly score no db'))
+                writer.writerow([])
 
     # Retrieve latency with reporter = source
     def latency_source_50(self):
@@ -549,25 +559,3 @@ class Microrca:
         anomaly_score = sorted(anomaly_score.items(), key=lambda x: x[1], reverse=True)
         return anomaly_score
 
-
-#
-# def parse_args():
-#     """Parse the args."""
-#     parser = argparse.ArgumentParser(
-#         description='Root cause analysis for microservices')
-#
-#     parser.add_argument('--folder', type=str, required=False,
-#                         default='1',
-#                         help='folder name to store csv file')
-#     
-#     parser.add_argument('--length', type=int, required=False,
-#                     default=150,
-#                     help='length of time series')
-#
-#     parser.add_argument('--url', type=str, required=False,
-#                     default='http://localhost:31090/api/v1/query',
-#                     help='url of prometheus query')
-#
-#     parser.add_argument('--time', type=float, required=False,
-#                     default= 1663058721.343917,
-#                     help='time of prometheus query')
