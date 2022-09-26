@@ -40,12 +40,13 @@ class Microrca:
 
     """
     # Constructor
-    def __init__(self, node_dict, folder_path, len_second, prom_url, metric_step = '14s', smoothing_window = 12, alpha = 0.55, ad_threshold = 0.05):
+    def __init__(self, node_dict, folder_path, len_second, prom_url, k_namespace='sock-shop', metric_step = '14s', smoothing_window = 12, alpha = 0.55, ad_threshold = 0.05):
         self.node_dict = node_dict
         self.folder_path = folder_path
         self.prom_url = prom_url 
         self.prom_url_range = prom_url + '_range' 
         self.len_second = len_second 
+        self.k_namespace = k_namespace
         self.metric_step = metric_step
         self.smoothing_window = smoothing_window
         self.alpha = alpha
@@ -108,7 +109,7 @@ class Microrca:
     def latency_source_50(self):
         latency_df = pd.DataFrame()
         response = requests.get(self.prom_url_range,
-                                params={'query': 'histogram_quantile(0.50, sum(irate(istio_request_duration_milliseconds_bucket{reporter="source", destination_workload_namespace="sock-shop", destination_workload!="unknown", source_workload!="unknown"}[1m])) by (destination_workload, source_workload, le))',
+                                params={'query': 'histogram_quantile(0.50, sum(irate(istio_request_duration_milliseconds_bucket{reporter="source", destination_workload_namespace="%(namespace)s", destination_workload!="unknown", source_workload!="unknown"}[1m])) by (destination_workload, source_workload, le))' % {'namespace': self.k_namespace},
                                         'start': self.start_time,
                                         'end': self.end_time,
                                         'step': self.metric_step})
@@ -160,7 +161,7 @@ class Microrca:
     def latency_destination_50(self):
         latency_df = pd.DataFrame()
         response = requests.get(self.prom_url_range,
-                                params={'query': 'histogram_quantile(0.50, sum(irate(istio_request_duration_milliseconds_bucket{reporter="destination", destination_workload_namespace="sock-shop", destination_workload!="unknown", source_workload!="unknown"}[1m])) by (destination_workload, source_workload, le))',
+                                params={'query': 'histogram_quantile(0.50, sum(irate(istio_request_duration_milliseconds_bucket{reporter="destination", destination_workload_namespace="%(namespace)s", destination_workload!="unknown", source_workload!="unknown"}[1m])) by (destination_workload, source_workload, le))' % {'namespace': self.k_namespace},
                                         'start': self.start_time,
                                         'end': self.end_time,
                                         'step': self.metric_step})
@@ -211,7 +212,7 @@ class Microrca:
     # Retrieve service metrics
     def svc_metrics(self):
         response = requests.get(self.prom_url_range,
-                                params={'query': 'sum(rate(container_cpu_usage_seconds_total{namespace="sock-shop", container!~"POD|istio-proxy|", container!="rabbitmq-exporter"}[1m])) by (pod, instance, container)',
+                                params={'query': 'sum(rate(container_cpu_usage_seconds_total{namespace="%(namespace)s", container!~"POD|istio-proxy|", container!="rabbitmq-exporter"}[1m])) by (pod, instance, container)' % {'namespace': self.k_namespace},
                                         'start': self.start_time,
                                         'end': self.end_time,
                                         'step': self.metric_step})
@@ -258,7 +259,7 @@ class Microrca:
     # Retrieve container network metrics
     def ctn_network(self, pod_name):
         response = requests.get(self.prom_url_range,
-                                params={'query': 'sum(rate(container_network_transmit_packets_total{namespace="sock-shop", pod="%s"}[1m])) / 1000 * sum(rate(container_network_transmit_packets_total{namespace="sock-shop", pod="%s"}[1m])) / 1000' % (pod_name, pod_name),
+                                params={'query': 'sum(rate(container_network_transmit_packets_total{namespace="%(namespace)s", pod="%(pod_name)s"}[1m])) / 1000 * sum(rate(container_network_transmit_packets_total{namespace="%(namespace)s", pod="%(pod_name)s"}[1m])) / 1000' % {'pod_name': pod_name, 'namespace': self.k_namespace},
                                         'start': self.start_time,
                                         'end': self.end_time,
                                         'step': self.metric_step})
@@ -273,7 +274,7 @@ class Microrca:
     # Retrieve container memory metrics
     def ctn_memory(self, pod_name):
         response = requests.get(self.prom_url_range,
-                                params={'query': 'sum(rate(container_memory_working_set_bytes{namespace="sock-shop", pod="%s"}[1m])) / 1000' % pod_name,
+                                params={'query': 'sum(rate(container_memory_working_set_bytes{namespace="%(namespace)s", pod="%(pod_name)s"}[1m])) / 1000' % {'pod_name': pod_name, 'namespace': self.k_namespace},
                                         'start': self.start_time,
                                         'end': self.end_time,
                                         'step': self.metric_step})
@@ -288,7 +289,7 @@ class Microrca:
     # Retrieve node network metrics
     def node_network(self, instance):
         response = requests.get(self.prom_url_range,
-                                params={'query': 'rate(node_network_transmit_packets_total{device="ens3", instance="%s"}[1m]) / 1000' % instance,
+                                params={'query': 'rate(node_network_transmit_packets_total{device="ens3", instance="%(instance)s"}[1m]) / 1000' % {'instance': instance},
                                         'start': self.start_time,
                                         'end': self.end_time,
                                         'step': self.metric_step})
@@ -306,7 +307,7 @@ class Microrca:
     # Retrieve node cpu metrics
     def node_cpu(self, instance):
         response = requests.get(self.prom_url_range,
-                                params={'query': 'sum(rate(node_cpu_seconds_total{mode != "idle",  mode!= "iowait", mode!~"^(?:guest.*)$", instance="%s" }[1m])) / count(node_cpu_seconds_total{mode="system", instance="%s"})' % (instance, instance),
+                                params={'query': 'sum(rate(node_cpu_seconds_total{mode != "idle",  mode!= "iowait", mode!~"^(?:guest.*)$", instance="%(instance)s" }[1m])) / count(node_cpu_seconds_total{mode="system", instance="%(instance)s"})' % {'instance': instance},
                                         'start': self.start_time,
                                         'end': self.end_time,
                                         'step': self.metric_step})
@@ -323,7 +324,7 @@ class Microrca:
     # Retrieve node memory metrics
     def node_memory(self, instance):
         response = requests.get(self.prom_url_range,
-                                params={'query': '1 - sum(node_memory_MemAvailable_bytes{instance="%s"}) / sum(node_memory_MemTotal_bytes{instance="%s"})' % (instance, instance),
+                                params={'query': '1 - sum(node_memory_MemAvailable_bytes{instance="%(instance)s"}) / sum(node_memory_MemTotal_bytes{instance="%(instance)s"})' % {'instance': instance},
                                         'start': self.start_time,
                                         'end': self.end_time,
                                         'step': self.metric_step})
@@ -359,7 +360,7 @@ class Microrca:
             DG._node[destination]['type'] = 'service'
 
         response = requests.get(self.prom_url,
-                                params={'query': 'sum(istio_requests_total{destination_workload_namespace="sock-shop", destination_workload!="unknown", source_workload!="unknown"}) by (source_workload, destination_workload)'})
+                                params={'query': 'sum(istio_requests_total{destination_workload_namespace="%(namespace)s", destination_workload!="unknown", source_workload!="unknown"}) by (source_workload, destination_workload)' % {'namespace': self.k_namespace}})
         results = response.json()['data']['result']
 
         for result in results:
@@ -376,7 +377,7 @@ class Microrca:
             DG._node[destination]['type'] = 'service'
 
         response = requests.get(self.prom_url,
-                                params={'query': 'sum(container_cpu_usage_seconds_total{namespace="sock-shop", container!~"POD|istio-proxy|", container!="rabbitmq-exporter"}) by (instance, container)'})
+                                params={'query': 'sum(container_cpu_usage_seconds_total{namespace="%(namespace)s", container!~"POD|istio-proxy|", container!="rabbitmq-exporter"}) by (instance, container)' % {'namespace': self.k_namespace}})
         results = response.json()['data']['result']
         for result in results:
             metric = result['metric']
