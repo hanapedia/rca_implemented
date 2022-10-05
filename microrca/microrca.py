@@ -40,11 +40,12 @@ class Microrca:
 
     """
     # Constructor
-    def __init__(self, node_dict, folder_path, len_second, prom_url, k_namespace='sock-shop', metric_step = '14s', smoothing_window = 12, alpha = 0.55, ad_threshold = 0.05):
+    def __init__(self, node_dict, folder_path, len_second, prom_url, include_db=False, k_namespace='sock-shop', metric_step = '14s', smoothing_window = 12, alpha = 0.55, ad_threshold = 0.05):
         self.node_dict = node_dict
         self.folder_path = folder_path
         self.prom_url = prom_url 
         self.prom_url_range = prom_url + '_range' 
+        self.include_db = include_db
         self.len_second = len_second 
         self.k_namespace = k_namespace
         self.metric_step = metric_step
@@ -344,7 +345,7 @@ class Microrca:
         DG = nx.DiGraph()
         df = pd.DataFrame(columns=['source', 'destination'])
         response = requests.get(self.prom_url,
-                                params={'query': 'sum(istio_tcp_received_bytes_total{destination_workload!="unknown", source_workload!="unknown"}) by (source_workload, destination_workload)'})
+                                params={'query': 'sum(istio_tcp_received_bytes_total{destination_workload_namespace="%(namespace)s",destination_workload!="unknown", source_workload!="unknown"}) by (source_workload, destination_workload)' % {'namespace': self.k_namespace}})
         results = response.json()['data']['result']
 
         for result in results:
@@ -404,24 +405,46 @@ class Microrca:
         # output: anomalous service invocation
         
         anomalies = []
-        for svc, latency in latency_df.iteritems():
-            # No anomaly detection in db
-            if svc != 'timestamp' and 'Unnamed' not in svc and 'rabbitmq' not in svc and 'db' not in svc:
-                latency = latency.rolling(window=self.smoothing_window, min_periods=1).mean()
-                x = np.array(latency)
-                x = np.where(np.isnan(x), 0, x)
-                normalized_x = preprocessing.normalize([x])
+        if self.include_db:
+            for svc, latency in latency_df.iteritems():
+                # No anomaly detection in db
+                # if svc != 'timestamp' and 'Unnamed' not in svc and 'rabbitmq' not in svc and 'db' not in svc:
+                if svc != 'timestamp' and 'Unnamed' not in svc: # and 'rabbitmq' not in svc and 'db' not in svc:
+                    latency = latency.rolling(window=self.smoothing_window, min_periods=1).mean()
+                    x = np.array(latency)
+                    x = np.where(np.isnan(x), 0, x)
+                    normalized_x = preprocessing.normalize([x])
 
-                X = normalized_x.reshape(-1,1)
+                    X = normalized_x.reshape(-1,1)
 
-                brc = Birch(branching_factor=50, n_clusters=None, threshold=self.ad_threshold, compute_labels=True)
-                brc.fit(X)
-                brc.predict(X)
+                    brc = Birch(branching_factor=50, n_clusters=None, threshold=self.ad_threshold, compute_labels=True)
+                    brc.fit(X)
+                    brc.predict(X)
 
-                labels = brc.labels_
-                n_clusters = np.unique(labels).size
-                if n_clusters > 1:
-                    anomalies.append(svc)
+                    labels = brc.labels_
+                    n_clusters = np.unique(labels).size
+                    if n_clusters > 1:
+                        anomalies.append(svc)
+        else:
+            for svc, latency in latency_df.iteritems():
+                # No anomaly detection in db
+                # if svc != 'timestamp' and 'Unnamed' not in svc: # and 'rabbitmq' not in svc and 'db' not in svc:
+                if svc != 'timestamp' and 'Unnamed' not in svc and 'rabbitmq' not in svc and 'db' not in svc:
+                    latency = latency.rolling(window=self.smoothing_window, min_periods=1).mean()
+                    x = np.array(latency)
+                    x = np.where(np.isnan(x), 0, x)
+                    normalized_x = preprocessing.normalize([x])
+
+                    X = normalized_x.reshape(-1,1)
+
+                    brc = Birch(branching_factor=50, n_clusters=None, threshold=self.ad_threshold, compute_labels=True)
+                    brc.fit(X)
+                    brc.predict(X)
+
+                    labels = brc.labels_
+                    n_clusters = np.unique(labels).size
+                    if n_clusters > 1:
+                        anomalies.append(svc)
         return anomalies
 
     # Add weight to the edges of anomaly graph 
