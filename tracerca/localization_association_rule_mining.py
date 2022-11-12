@@ -14,7 +14,7 @@ from loguru import logger
 from mlxtend.frequent_patterns import fpgrowth
 from mlxtend.preprocessing import TransactionEncoder
 
-from trainticket_config import EXP_NOISE_LIST
+# from trainticket_config import EXP_NOISE_LIST
 
 
 PREDICT_COLUMN = 'Ours-predict'
@@ -44,6 +44,8 @@ def inject_noise(df, ratio=0):
 # @click.option("--quiet", "-q", is_flag=True)
 def localization_main(input_file, output_file, min_support_rate, quiet, k, log_file):
     input_file = Path(input_file)
+    if not input_file.is_file():
+        return
 
     with open(input_file, 'rb+') as f:
         input_file = pickle.load(f)

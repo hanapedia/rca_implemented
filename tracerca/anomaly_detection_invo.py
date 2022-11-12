@@ -6,7 +6,7 @@ import click
 import numpy as np
 from sklearn.ensemble import IsolationForest
 from loguru import logger
-from trainticket_config import FEATURE_NAMES
+# from trainticket_config import FEATURE_NAMES
 # from diskcache import Cache
 
 DEBUG = True
@@ -14,10 +14,10 @@ DEBUG = True
 threshold = 1.0
 
 
-def anomaly_detection_isolation_forest(df, result_column, cache):
+def anomaly_detection_isolation_forest(df, result_column, cache, config):
     indices = np.unique(df.index.values)
     for source, target in indices:
-        empirical = df.loc[(source, target), FEATURE_NAMES].values
+        empirical = df.loc[(source, target), config.FEATURE_NAMES].values
         token = f"IF-{source}-{target}"
         if token not in cache:
             df.loc[(source, target), result_column] = 0
@@ -28,9 +28,9 @@ def anomaly_detection_isolation_forest(df, result_column, cache):
     return df
 
 
-def anomaly_detection_3sigma_without_useful_features(df, result_column, cache):
+def anomaly_detection_3sigma_without_useful_features(df, result_column, cache, config):
     indices = np.unique(df.index.values)
-    useful_feature = {key: FEATURE_NAMES for key in indices}
+    useful_feature = {key: config.FEATURE_NAMES for key in indices}
     return anomaly_detection_3sigma(df, result_column, useful_feature, cache=cache)
 
 
@@ -69,7 +69,7 @@ def anomaly_detection_3sigma(df, result_column, useful_feature, cache):
 # @click.option('-u', '--useful-feature', "useful_feature", default='.', type=str)
 # @click.option('-c', '--cache', 'cache_file', default='.', type=str)
 # @click.option('-t', '--threshold', 'main_threshold', default=1, type=float)
-def invo_anomaly_detection_main(input_file, output_file, useful_feature, cache_file, main_threshold):
+def invo_anomaly_detection_main(input_file, output_file, useful_feature, cache_file, main_threshold, config):
     global threshold
     threshold = main_threshold
 
@@ -91,10 +91,10 @@ def invo_anomaly_detection_main(input_file, output_file, useful_feature, cache_f
     toc = time.time()
     print("algo:", "ours", "time:", toc - tic, 'invos:', len(df))
 
-    df = anomaly_detection_3sigma_without_useful_features(df, 'NoSelection-predict', cache=cache)
+    df = anomaly_detection_3sigma_without_useful_features(df, 'NoSelection-predict', cache=cache, config=config)
 
     # tic = time.time()
-    df = anomaly_detection_isolation_forest(df, 'IF-predict', cache=cache)
+    df = anomaly_detection_isolation_forest(df, 'IF-predict', cache=cache, config=config)
     # toc = time.time()
     # print("algo:", "IF", "time:", toc - tic, 'invos:', len(df))
 

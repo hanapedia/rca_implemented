@@ -9,7 +9,7 @@ from pathlib import Path
 from loguru import logger
 
 # from data.trainticket.download import simple_name
-from trainticket_config import *
+# from trainticket_config import *
 
 """
 Encode train-ticket pickle data into data frame of invocations:
@@ -17,16 +17,16 @@ Encode train-ticket pickle data into data frame of invocations:
     ...
 """
 
-def simple_name(service_name):
-    if service_name in SIMPLE_NAME_DICT:
-        return SIMPLE_NAME_DICT[service_name]
+def simple_name(service_name, config):
+    if service_name in config.SIMPLE_NAME_DICT:
+        return config.SIMPLE_NAME_DICT[service_name]
     return service_name
 
 # @click.command('invo-encoding')
 # @click.option('-i', '--input', 'input_file', default="*.pkl", type=str)
 # @click.option('-o', '--output', 'output_file', default='', type=str)
 # # @click.option('-e', '--error-time', default='error_time.pkl', type=str)
-def train_ticket_invo_encoding_main(input_file: str, output_file: str):
+def train_ticket_invo_encoding_main(input_file: str, output_file: str, config: dict):
     input_file = Path(input_file)
     output_file = Path(output_file)
     output_file.parent.mkdir(exist_ok=True)
@@ -34,7 +34,7 @@ def train_ticket_invo_encoding_main(input_file: str, output_file: str):
     with open(str(input_file.resolve()), 'rb') as f:
         input_data = pickle.load(f)
 
-    if ENABLE_ALL_FEATURES:
+    if config.ENABLE_ALL_FEATURES:
         data = {
             'source': [], 'target': [], 'start_timestamp': [], 'end_timestamp': [], 'trace_label': [],
             'trace_id': [],
@@ -61,12 +61,12 @@ def train_ticket_invo_encoding_main(input_file: str, output_file: str):
                     trace[key] = np.asarray(item)[indices]
                 except IndexError:
                     raise RuntimeError(f"{key} {item} {indices}")
-        data['source'].extend(list(simple_name(_[0]) for _ in trace['s_t']))
-        data['target'].extend(list(simple_name(_[1]) for _ in trace['s_t']))
+        data['source'].extend(list(simple_name(_[0], config) for _ in trace['s_t']))
+        data['target'].extend(list(simple_name(_[1], config) for _ in trace['s_t']))
         # data['source'].extend(list(_[0] for _ in trace['s_t']))
         # data['target'].extend(list(_[1] for _ in trace['s_t']))
 
-        if ENABLE_ALL_FEATURES:
+        if config.ENABLE_ALL_FEATURES:
             data['start_timestamp'].extend(_ / 1e6 for _ in trace['timestamp'])
             data['end_timestamp'].extend(_ / 1e6 for _ in trace['endtime'])
             data['trace_start_timestamp'].extend(min(trace['timestamp']) / 1e6 for _ in trace['timestamp'])
@@ -95,7 +95,7 @@ def train_ticket_invo_encoding_main(input_file: str, output_file: str):
     df = pd.DataFrame.from_dict(
         data, orient='columns',
     )
-    for feature_name in FEATURE_NAMES:
+    for feature_name in config.FEATURE_NAMES:
         assert feature_name in df.columns
     # for service in np.unique(df.source):
     #     assert service in INVOLVED_SERVICES, f'{service} {df[df.source == service]}'

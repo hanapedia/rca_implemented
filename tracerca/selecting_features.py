@@ -10,7 +10,7 @@ import pandas as pd
 from loguru import logger
 from tqdm import tqdm
 from pprint import pprint
-from trainticket_config import FEATURE_NAMES
+# from trainticket_config import FEATURE_NAMES
 
 DEBUG = False  # very slow
 
@@ -51,7 +51,7 @@ def stderr_criteria(empirical, reference, threshold):
 # @click.option('-oc', '--output_cache', 'output_cache_file', default='.', type=str)
 # @click.option('-h', '--history', default='historical_data.pkl', type=str)
 # @click.option("-f", "--fisher", "fisher_threshold", default=1, type=float)
-def selecting_feature_main(input_file: str, output_file: str,  output_cache_file: str, history: set, fisher_threshold):
+def selecting_feature_main(input_file: str, output_file: str,  output_cache_file: str, history: set, fisher_threshold, config: dict):
     input_file = Path(input_file)
     output_file = Path(output_file)
     history_df = pd.DataFrame()
@@ -70,7 +70,7 @@ def selecting_feature_main(input_file: str, output_file: str,  output_cache_file
     if DEBUG:
         plot_dir = output_file.parent / 'selecting_feature.debug'
         plot_dir.mkdir(exist_ok=True)
-    for (source, target), feature in tqdm(product(indices, FEATURE_NAMES)):
+    for (source, target), feature in tqdm(product(indices, config.FEATURE_NAMES)):
         empirical = np.sort(df.loc[(source, target), feature].values)
         reference = np.sort(history.loc[(source, target), feature].values)
         token = f"reference-{source}-{target}-{feature}-mean-variance"
