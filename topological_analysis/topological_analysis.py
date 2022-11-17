@@ -4,6 +4,7 @@
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from collections import defaultdict
 import numpy as np
 # import numpy as np
@@ -25,6 +26,17 @@ class Topology():
     def set_edge_colors(self):
         edge_color = []
         anomalies_dict = nx.get_edge_attributes(self.topology, 'anomalous')
+        for edge in self.topology.edges():
+            if edge in anomalies_dict:
+                edge_color.append('red')
+            else:
+                edge_color.append('gray')
+        self.edge_color = edge_color
+
+    # set edge color based on num invo weight
+    def set_edge_colors_n(self):
+        edge_color = []
+        invos_dict = nx.get_edge_attributes(self.topology, 'num_invo')
         for edge in self.topology.edges():
             if edge in anomalies_dict:
                 edge_color.append('red')
@@ -91,7 +103,7 @@ class Topology():
                 else:
                     node_attr_dict[node]['color'] = regular_node_color
 
-                if node == loc_err_conf['root_cause']:
+                if node in loc_err_conf['root_cause']:
                     node_attr_dict[node]['label'] = f'{node}*(RC)*'
                 else:
                     node_attr_dict[node]['label'] = node
@@ -176,24 +188,29 @@ class Topology():
             raise Exception("order must be either 'in', 'out', or 'diff'")
 
     # TODO 
-    # node coloring
-    # figure size
-    def draw(self, show, path='', edge_label=True):
-        plt.figure(figsize=[16,16],dpi=80)
+    # node and edge coloring using cm
+    # default configs
+    def draw(self, show, path='', edge_label=True, plot_opt={}):
+        plot_opt_default = {}
+        if 'ax' not in plot_opt:
+            def_fig = plt.figure(figsize=[16,16],dpi=80)
+            def_ax = def_fig.add_axes([0,0,1,1])
+            def_ax.set_title(self.name)
+            plot_opt_default['ax'] = def_ax
+
+        plot_opt = plot_opt_default | plot_opt
         if self.loc_err:
             self.set_edge_colors()
             self.set_node_colors_and_label()
             el = nx.get_edge_attributes(self.topology, 'selected_features')
-            print(el)
             bbox = dict(boxstyle='round', ec=(0.0, 1.0, 1.0, 0), fc=(0.0, 1.0, 1.0, 0))
-            nx.draw_networkx_edge_labels(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), edge_labels = el, font_size=8,verticalalignment='center_baseline', label_pos= 0.5, rotate=True, bbox=bbox)
+            nx.draw_networkx_edge_labels(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), ax=plot_opt['ax'], edge_labels = el, font_size=8,verticalalignment='center_baseline', label_pos= 0.5, rotate=True, bbox=bbox)
 
-
-        nx.draw_networkx(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), node_size=300, font_size=11, width=1, arrowsize=10, edge_color=self.edge_color, node_color=self.node_color, labels=self.node_label)
+        nx.draw_networkx(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), ax=plot_opt['ax'], node_size=300, font_size=11, width=1, arrowsize=10, edge_color=self.edge_color, node_color=self.node_color, labels=self.node_label)
         if edge_label:
             el = nx.get_edge_attributes(self.topology, 'num_invo')
             bbox = dict(boxstyle='round', ec=(0.0, 1.0, 1.0, 0), fc=(0.0, 1.0, 1.0, 0))
-            nx.draw_networkx_edge_labels(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), edge_labels = el, font_size=8, verticalalignment='bottom', label_pos= 0.5, rotate=True, bbox=bbox)
+            nx.draw_networkx_edge_labels(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), ax=plot_opt['ax'], edge_labels = el, font_size=8, verticalalignment='bottom', label_pos= 0.5, rotate=True, bbox=bbox)
 
         if show:
             plt.show()
