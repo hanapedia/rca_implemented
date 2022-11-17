@@ -14,8 +14,6 @@ class Topology():
         self.topology = nx.DiGraph()
         self.name = name
         self.loc_err = loc_err
-        self.edge_color = 'gray'
-        self.node_color = '#1f78b4'
 
     def load_csv(self, csv_path):
         self.df = pd.read_csv(csv_path, index_col=0)
@@ -23,36 +21,30 @@ class Topology():
     def set_topology(self, topo):
         self.topology = topo
 
-    def set_edge_colors(self):
-        edge_color = []
-        anomalies_dict = nx.get_edge_attributes(self.topology, 'anomalous')
-        for edge in self.topology.edges():
-            if edge in anomalies_dict:
-                edge_color.append('red')
-            else:
-                edge_color.append('gray')
-        self.edge_color = edge_color
-
     # set edge color based on num invo weight
-    def set_edge_colors_n(self):
-        edge_color = []
-        invos_dict = nx.get_edge_attributes(self.topology, 'num_invo')
-        for edge in self.topology.edges():
-            if edge in anomalies_dict:
-                edge_color.append('red')
-            else:
-                edge_color.append('gray')
-        self.edge_color = edge_color
+    def set_edge_colors(self):
+        def normalize(x, max_invo, min_invo):
+            max_range = 1.0
+            min_range = 0.2
+            return (max_range - min_range) * (x - min_invo) / (max_invo - min_invo) + min_range
 
-    def set_node_colors_and_label(self):
+        invos_dict = nx.get_edge_attributes(self.topology, 'num_invo')
+        invos = list(invos_dict.values())
+        max_invo = max(invos)
+        min_invo = min(invos)
+        return list(map(lambda x: cm.Blues(normalize(x, max_invo, min_invo)), invos))
+
+    def set_node_colors_and_label(self, reg_node_color):
         node_color = []
         node_label_dict = {}
         for node in self.topology.nodes(data=True):
-            node_color.append(node[1]['color'])
+            if 'rank' in node[1]:
+                node_color.append(cm.YlOrRd(float(node[1]['rank']/8)))
+            else: 
+                node_color.append(reg_node_color)
             node_label_dict[node[0]] = node[1]['label']
 
-        self.node_color = node_color
-        self.node_label = node_label_dict
+        return node_color, node_label_dict
 
     def generate_topology(self, df: pd.DataFrame, row_labels: set, exclude=False, exclude_label='node', loc_err_conf={}):
         self.df = df
@@ -93,20 +85,17 @@ class Topology():
         nx.set_edge_attributes(self.topology, edge_attr_dict)
 
         # Set node fact
-        if 'root_cause' in loc_err_conf and 'predictions' in loc_err_conf:
-            predict_color = ['#a85832', '#a88e32', '#8ca832', '#50a832', '#32a871']
-            regular_node_color = '#1f78b4'
-            color_dict = {k: v for k, v in zip(loc_err_conf['predictions'], predict_color)}
-            for node in self.topology.nodes():
-                if node in color_dict:
-                    node_attr_dict[node]['color'] = color_dict[node] 
-                else:
-                    node_attr_dict[node]['color'] = regular_node_color
+        for node in self.topology.nodes():
+            node_attr_dict[node]['label'] = node
 
-                if node in loc_err_conf['root_cause']:
-                    node_attr_dict[node]['label'] = f'{node}*(RC)*'
-                else:
-                    node_attr_dict[node]['label'] = node
+        if 'root_cause' in loc_err_conf:
+            for rc in loc_err_conf['root_cause']:
+                node_attr_dict[rc]['label'] += '*(RC)*'
+        if 'predictions' in loc_err_conf:
+            for rank, prediction in enumerate(loc_err_conf['predictions'], 1):
+                node_attr_dict[prediction]['rank'] = rank
+                node_attr_dict[prediction]['label'] += f'~[{rank}]'
+
         nx.set_node_attributes(self.topology, node_attr_dict)
 
     def pagerank(self):
@@ -190,27 +179,41 @@ class Topology():
     # TODO 
     # node and edge coloring using cm
     # default configs
-    def draw(self, show, path='', edge_label=True, plot_opt={}):
-        plot_opt_default = {}
+    def draw(self, show, path='', edge_label=False, plot_opt={}):
+        plot_opt_default = {
+            'node_color': (0.57,0.71,0.41,0.75),
+            'node_lable':{},
+            'edge_color': 'gray',
+        }
         if 'ax' not in plot_opt:
-            def_fig = plt.figure(figsize=[16,16],dpi=80)
+            def_fig = plt.figure(figsize=[16,9],dpi=120)
             def_ax = def_fig.add_axes([0,0,1,1])
             def_ax.set_title(self.name)
             plot_opt_default['ax'] = def_ax
 
         plot_opt = plot_opt_default | plot_opt
-        if self.loc_err:
-            self.set_edge_colors()
-            self.set_node_colors_and_label()
-            el = nx.get_edge_attributes(self.topology, 'selected_features')
-            bbox = dict(boxstyle='round', ec=(0.0, 1.0, 1.0, 0), fc=(0.0, 1.0, 1.0, 0))
-            nx.draw_networkx_edge_labels(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), ax=plot_opt['ax'], edge_labels = el, font_size=8,verticalalignment='center_baseline', label_pos= 0.5, rotate=True, bbox=bbox)
 
-        nx.draw_networkx(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), ax=plot_opt['ax'], node_size=300, font_size=11, width=1, arrowsize=10, edge_color=self.edge_color, node_color=self.node_color, labels=self.node_label)
+        if self.loc_err:
+            plot_opt['edge_color'] = self.set_edge_colors()
+
+            plot_opt['node_color'], plot_opt['node_label'] = self.set_node_colors_and_label(plot_opt['node_color'])
+
+            anomalous_edges = nx.get_edge_attributes(self.topology, 'anomalous')
+            anomalous_edges = list(anomalous_edges.keys()) 
+            nx.draw_networkx_edges(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), edgelist=anomalous_edges, style='solid', ax=plot_opt['ax'], width=3, arrowsize=1, edge_color='red')
+
+            el = nx.get_edge_attributes(self.topology, 'selected_features')
+            for k, v in el.items():
+                plot_opt['ax'].plot([], [], 'r_', label=f'{k}: {", ".join(v)}')
+
+        nx.draw_networkx(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), ax=plot_opt['ax'], node_size=300, font_size=7, font_color='#373737', width=2, arrowsize=10, edge_color=plot_opt['edge_color'], node_color=plot_opt['node_color'], labels=plot_opt['node_label'])
+
         if edge_label:
             el = nx.get_edge_attributes(self.topology, 'num_invo')
             bbox = dict(boxstyle='round', ec=(0.0, 1.0, 1.0, 0), fc=(0.0, 1.0, 1.0, 0))
             nx.draw_networkx_edge_labels(self.topology, pos=nx.nx_pydot.graphviz_layout(self.topology, prog='dot'), ax=plot_opt['ax'], edge_labels = el, font_size=8, verticalalignment='bottom', label_pos= 0.5, rotate=True, bbox=bbox)
+
+        plot_opt['ax'].legend()
 
         if show:
             plt.show()
