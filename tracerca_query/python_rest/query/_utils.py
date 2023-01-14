@@ -1,5 +1,9 @@
 import pickle
+from typing import List
+import pandas
 from pathlib import Path
+
+from query.models import ParsedJaegerTraces
 
 def recurse_dict_print(d: dict | list, depth=0):
     """Util function to print the schema of a nested dictionaly recursively"""
@@ -27,3 +31,13 @@ def load_pickle_file(path: Path):
     with open(path, 'rb') as f:
         return pickle.load(f)
     
+def write_pickle_file(path: Path, obj: object):
+    """Write to Pickle file"""
+    with open(path, 'wb') as f:
+        pickle.dump(obj, f)
+    
+def load_traces_pickle(path: Path) -> List[ParsedJaegerTraces]:
+    return load_pickle_file(path)
+
+def load_invos_pickle(path: Path) -> pandas.DataFrame:
+    return load_pickle_file(path)
