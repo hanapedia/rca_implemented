@@ -11,3 +11,5 @@
   - only consider grpc for now
   - use operationName field of each span
   - and processID to get the host name
+### Issues
+- fix the invocation serialization

@@ -91,7 +91,10 @@ class SpanMapParser:
         self.s_t: List[S_T] = []
 
     def parse(self) -> ParsedJaegerTraces:
-        """parse into ParsedJaegerTraces"""
+        """
+        parse into ParsedJaegerTraces
+        currently only supports unary grpc
+        """
         for span_pair in self.span_map.values():
             if len(span_pair) != 2:
                 continue
@@ -113,7 +116,10 @@ class SpanMapParser:
 
     def ensure_pair_order(self, span_pair: List[TracesQuerySpansReduced]) -> List[TracesQuerySpansReduced]:
         """Ensure that the spans are ordered correctly"""
-        if span_pair[0].startTime > span_pair[1].startTime:
+        # if span_pair[0].startTime > span_pair[1].startTime:
+        #     span_pair.reverse()
+
+        if span_pair[0].logs[0]["fields"][2]["value"] == "RECEIVED":
             span_pair.reverse()
         return span_pair
     

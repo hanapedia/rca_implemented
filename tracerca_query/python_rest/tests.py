@@ -1,4 +1,6 @@
+from dataclasses import asdict
 import unittest
+import time
 from pprint import pprint
 from pathlib import Path
 
@@ -9,12 +11,17 @@ from query.jaeger_query import JaegerQuery
 class QueryTests(unittest.TestCase):
     host = "localhost"
     port = "16686"
+    end = int(time.time())
+    start = end - 60
+    SEC_TO_MICROSEC = 1_000_000
+    # start = 1673876986
+    # end = start + 60
     
     params = {
-        "start": "1673578680000000",
-        "end": "1673582740000000", # 1_570_438_141_766_835 1_673_582_235_204_000
-        "loop": "1h",
-        "limit": "100",
+        "start": start * SEC_TO_MICROSEC,
+        "end": end * SEC_TO_MICROSEC, # 1_570_438_141_766_835 1_673_582_235_204_000
+        "loop": "custom",
+        "limit": "500",
         "service": "gateway" 
     }
     tracesQueryParams = TracesQueryParams(**params)
@@ -49,25 +56,14 @@ class QueryTests(unittest.TestCase):
 
         tracefirst = res[0]
         spansfirst = tracefirst["spans"]
-        tracelast = res[-1]
-        spanslast = tracelast["spans"]
-        st_first = spansfirst[0]["startTime"]
-        st_last = spanslast[0]["startTime"]
-        pprint(st_last - st_first)
-        pprint(len(res))
+        logs_first = spansfirst[1]["logs"]
+        pprint(logs_first)
 
         # pprint(spans[1]["tags"])
         # pprint(spans[2]["tags"])
         # processes = spans["processes"]
         # pprint(processes)
-
-        # spans = sorted(spans, key=lambda x: x["startTime"]+x["duration"])
-        # pprint(spans[1]["duration"])
-        # pprint(spans[1]["startTime"])
         # pprint(spans[1]["tags"])
-        # pprint(spans[0]["processID"])
-        # pprint(spans[1]["processID"])
-        # pprint(spans[2]["processID"])
         # pprint(spans[1]["logs"])
 
         self.assertTrue(True)
@@ -76,7 +72,10 @@ class QueryTests(unittest.TestCase):
         jq = JaegerQuery(self.host, self.port)
 
         parsed = jq.query_and_parse_jaeger_traces(self.tracesQueryParams)
-        pprint(parsed)
+        for trace in parsed:
+            print(asdict(trace)["s_t"])
+            # for s, t in trace["s_t"]:
+            #     print(s, t)
 
 class UtilTests(unittest.TestCase):
     def test_recursive_dict(self):
@@ -104,9 +103,17 @@ class UtilTests(unittest.TestCase):
         self.assertTrue(True)
 
     def test_target_trace_structure(self):
-        input = Path("./example_data/generated.pkl")
+        # input = Path("/Users/hirokihanada/code/src/github.com/hanapedia/chaos-experiments/experiment/ansible/example/experiments/foc5s/datasets/injected/fanout-1_delay_1.pkl")
+        # pickle_content = load_traces_pickle(input)
+        # pprint(len(pickle_content))
+        #
+        # input = Path("/Users/hirokihanada/code/src/github.com/hanapedia/chaos-experiments/experiment/ansible/example/experiments/foc5s/datasets/injected/fanout-2_delay_1.pkl")
+        # pickle_content = load_traces_pickle(input)
+        # pprint(len(pickle_content))
+
+        input = Path("/Users/hirokihanada/code/src/github.com/hanapedia/chaos-experiments/experiment/ansible/example/experiments/foc5s/datasets/uninjected/history.pkl")
         pickle_content = load_traces_pickle(input)
-        pprint(pickle_content[0])
+        pprint(pickle_content)
 
     def test_invo_encoding_compatibility(self):
         input = Path("./example_data/generated_invo.pkl")

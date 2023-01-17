@@ -7,7 +7,7 @@ from dataclasses import asdict
 
 from query.jaeger_query import JaegerQuery
 from query.models import ParsedJaegerTraces, TracesQueryParams
-from query._utils import load_pickle_file, write_pickle_file
+from query._utils import load_traces_pickle, write_pickle_file
 
 SEC_TO_MICROSEC = 1_000_000
 
@@ -20,7 +20,7 @@ SEC_TO_MICROSEC = 1_000_000
 @click.option("-g", "--gateway_name", "gateway_name", type=str, default="gateway", help="The name of the gateway service")
 @click.option("-h", "--hostname", "hostname", type=str, default="localhost", help="hostname for jaeger query")
 @click.option("-p", "--port", "port", type=str, default="16686", help="port for jaeger query")
-@click.option("-p", "--prometheus", "include_prometheus", is_flag=True, help="flag to indicate whether or not to include pormetheus metrics")
+@click.option("-pr", "--prometheus", "include_prometheus", is_flag=True, help="flag to indicate whether or not to include pormetheus metrics")
 def main(
         output_path,
         output_append,
@@ -55,13 +55,14 @@ def main(
     traces = list(map(lambda x: asdict(x), traces))
     
     output_path = Path(output_path)
-    if output_append:
+    if output_append and os.path.isfile(output_path):
         original_traces = load_traces_pickle(output_path)
-        if not isinstance(original_traces, list):
-            raise Exception("File already exists but does not match the format wanted. (List[ParsedJaegerTraces])")
+        if isinstance(original_traces, list):
+            if len(original_traces) > 0 and isinstance(original_traces[0], dict):
+                original_traces.extend(traces)
+                traces = original_traces
         
-        traces = original_traces.extend(traces)
-    
+    print(len(traces))
     write_pickle_file(output_path, traces)
 
 if __name__ == "__main__":
