@@ -1,0 +1,9 @@
+click
+numpy
+seaborn
+pandas
+loguru
+tqdm
+pprintpp
+mlxtrend
+sklearn
