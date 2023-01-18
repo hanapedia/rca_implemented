@@ -58,15 +58,23 @@ class Microrca:
         self.faults_name = faults_name
         self.end_time = end_time
         self.start_time = end_time - self.len_second
+
+        # Query latencies
+        # latency_df is used in the rca
         latency_df_source = self.latency_source_50()
         latency_df_destination = self.latency_destination_50()
         latency_df = latency_df_destination.iloc[:, 1:].add(latency_df_source.iloc[:, 1:], fill_value=0)
         
+        # Queries service metrics and saves them as csv
         self.svc_metrics()
         
+        # Queries metrics and construct directed graph
+        # should be separated to query part and DG generation part
         DG = self.mpg()
 
         # anomaly detection on response time of service invocation
+        # does not query
+        # uses queries data
         anomalies = self.birch_ad_with_smoothing(latency_df)
         print(anomalies)
         
@@ -78,6 +86,8 @@ class Microrca:
         
         anomaly_nodes = set(anomaly_nodes)
          
+        # generate anomaly subgraph
+        # calls self.node_weight, which reads the csv file generated
         anomaly_score = self.anomaly_subgraph(DG, anomalies, latency_df)
         print(anomaly_score)
 
