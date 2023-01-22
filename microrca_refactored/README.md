@@ -30,4 +30,10 @@
   - the values represent IP address of the node
 - required for the conversion between hostname and ip
 
-
+### Query pattern
+- create csv if the data does not exist
+- append df if the data exists
+uninjected:
+- same pattern as tracerca, break it down to multiple intervals
+injected:
+- one interval, same as tracerca

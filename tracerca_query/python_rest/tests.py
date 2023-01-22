@@ -111,7 +111,7 @@ class UtilTests(unittest.TestCase):
         # pickle_content = load_traces_pickle(input)
         # pprint(len(pickle_content))
 
-        input = Path("/Users/hirokihanada/code/src/github.com/hanapedia/chaos-experiments/experiment/ansible/example/experiments/foc5s/datasets/uninjected/history.pkl")
+        input = Path("/Users/hirokihanada/code/src/github.com/hanapedia/chaos-experiments/experiment/generated/chain_fanout-v2/chc10s/datasets/tracerca/injected/chain-1_delay_2.pkl")
         pickle_content = load_traces_pickle(input)
         pprint(pickle_content)
 
