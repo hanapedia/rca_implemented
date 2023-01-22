@@ -2,5 +2,5 @@ requests
 pandas
 numpy
 networkx
-csv
-sklearn
+scikit-learn
+click
