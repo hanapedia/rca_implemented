@@ -363,8 +363,12 @@ class TraceRCA:
             lambda x: pattern_scores[x] >= pattern_score_threshold,
             itemset_handler.frequent_patterns
         ))
-        patterns = sorted(patterns, key=lambda x: pattern_scores[x], reverse=True)[:1000]
+        patterns = sorted(patterns, key=lambda x: pattern_scores[x], reverse=True)
+        # patterns = sorted(patterns, key=lambda x: pattern_scores[x], reverse=True)[:1000]
         item_ret = defaultdict(lambda: {"score": -1, "pattern": frozenset(), "pattern_score": 0, "in-pattern_score": 0})
+        # print(f"num patterns {len(patterns)}")
+        # print(pattern_scores[frozenset({'chain-15'})])
+        print(len(pattern_scores))
         for pattern in patterns:
             if len(pattern) > 1:
                 continue
@@ -379,6 +383,7 @@ class TraceRCA:
                         "pattern_score": ps,
                         "in-pattern_score": ips,
                     }
+                # print(item_ret[item])
 
         ret = sorted(
             itemset_handler.items,
